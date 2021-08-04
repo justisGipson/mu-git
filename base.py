@@ -1,6 +1,9 @@
 import os
+import itertools
+import operator
+from collections import namedtuple
 
-from . import data
+import data
 
 def write_tree(directory='.'):
   entries = []
@@ -17,11 +20,11 @@ def write_tree(directory='.'):
         type_ = 'tree'
         oid = write_tree(full)
       entries.append((entry.name, oid, type_))
-  
+
   tree = ''.join(f'{type_}{oid}{name}\n'
-                for name, oid, type_ 
+                for name, oid, type_
                 in sorted(entries))
-  return data.hash_object(tree.encode(), 'tree')  
+  return data.hash_object(tree.encode(), 'tree')
 
 def _iter_tree_entries(oid):
   if not oid:
@@ -30,7 +33,7 @@ def _iter_tree_entries(oid):
   for entry in tree.decode().splitlines():
     type_, oid, name = entry.split(' ', 2)
     yield type_, oid, name
-  
+
 def get_tree(oid, base_path=''):
   result = {}
   for type_, oid, name in _iter_tree_entries(oid):
@@ -73,11 +76,11 @@ def read_tree(tree_oid):
 
 def commit(message):
   commit = f'tree {write_tree()}\n'
-  
+
   HEAD = data.get_HEAD()
   if HEAD:
     commit += f'parent {HEAD}\n'
-  
+
   commit += '\n'
   commit += f'{message}\n'
 
@@ -86,6 +89,35 @@ def commit(message):
   data.set_HEAD(oid)
 
   return oid
+
+def checkout(old):
+  commit = get_commit(old)
+  read_tree(commit.tree)
+  data.set_HEAD(old)
+
+def create_tag(name, old):
+  # TODO: actually create tag
+  pass
+
+Commit = namedtuple('Commit', ['tree', 'parent', 'message'])
+
+def get_commit(old):
+  parent = None
+
+  commit = data.get_object(old, 'commit').decode()
+  lines = iter(commit.splitlines())
+
+  for line in itertools.takewhile(operator.truth, lines):
+    key, value = line.split(' ', 1)
+    if key == 'tree':
+      tree = value
+    elif key == 'parent':
+      parent = value
+    else:
+      assert False, f'Unknown field {key}'
+
+  message = '\n'.join(lines)
+  return Commit(tree=tree, parent=parent, message=message)
 
 def is_ignored(path):
   return '.mu-git' in path.split('/')
