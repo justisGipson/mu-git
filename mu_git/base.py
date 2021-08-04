@@ -77,7 +77,7 @@ def read_tree(tree_oid):
 def commit(message):
   commit = f'tree {write_tree()}\n'
 
-  HEAD = data.get_HEAD()
+  HEAD = data.get_ref('HEAD')
   if HEAD:
     commit += f'parent {HEAD}\n'
 
@@ -86,25 +86,24 @@ def commit(message):
 
   oid = data.hash_object(commit.encode(), 'commit')
 
-  data.set_HEAD(oid)
+  data.update_ref('HEAD', oid)
 
   return oid
 
-def checkout(old):
-  commit = get_commit(old)
+def checkout(oid):
+  commit = get_commit(oid)
   read_tree(commit.tree)
-  data.set_HEAD(old)
+  data.update_ref('HEAD', oid)
 
-def create_tag(name, old):
-  # TODO: actually create tag
-  pass
+def create_tag(name, oid):
+  data.update_ref(f'refs/tags/{name}', oid)
 
 Commit = namedtuple('Commit', ['tree', 'parent', 'message'])
 
-def get_commit(old):
+def get_commit(oid):
   parent = None
 
-  commit = data.get_object(old, 'commit').decode()
+  commit = data.get_object(oid, 'commit').decode()
   lines = iter(commit.splitlines())
 
   for line in itertools.takewhile(operator.truth, lines):

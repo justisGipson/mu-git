@@ -6,9 +6,11 @@ import textwrap
 import base
 import data
 
-def main ():
+def main():
   args = args.parse()
   args.func(args)
+
+  sys.exit(main() or 0)
 
 def parse_args():
   parser = argparse.ArgumentParser()
@@ -43,12 +45,12 @@ def parse_args():
 
   checkout_parser = commands.add_parser('checkout')
   checkout_parser.set_defaults(func=checkout)
-  checkout_parser.add_argument('old')
+  checkout_parser.add_argument('oid')
 
   tag_parser = commands.add_parser('tag')
   tag_parser.set_defaults(func=tag)
   tag_parser.add_argument('name')
-  tag_parser.add_argument('old', nargs='?')
+  tag_parser.add_argument('oid', nargs='?')
 
   return parser.parse_args()
 
@@ -74,20 +76,20 @@ def commit(args):
   print(base.commit(args.message))
 
 def log(args):
-  old = args.old or data.get_HEAD()
+  oid = args.oid or data.get_ref('HEAD')
 
-  while old:
-    commit = base.get_commit(old)
+  while oid:
+    commit = base.get_commit(oid)
 
-    print(f'commit {old}\n')
+    print(f'commit {oid}\n')
     print(textwrap.indent(commit.message, '      '))
     print('')
 
-    old = commit.parent
+    oid = commit.parent
 
 def checkout(args):
-  base.checkout(args.old)
+  base.checkout(args.oid)
 
 def tag(args):
-  old = args.old or data.get_HEAD()
-  base.create_tag(args.name, old)
+  oid = args.oid or data.get_ref('HEAD')
+  base.create_tag(args.name, oid)
