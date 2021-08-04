@@ -1,6 +1,8 @@
 import os
 import itertools
 import operator
+import string
+
 from collections import namedtuple
 
 import data
@@ -117,6 +119,25 @@ def get_commit(oid):
 
   message = '\n'.join(lines)
   return Commit(tree=tree, parent=parent, message=message)
+
+def get_oid(name):
+  # name is ref
+  refs_to_try = [
+    f'{name}',
+    f'refs/{name}'
+    f'refs/tags/{name}'
+    f'refs/heads/{name}'
+  ]
+  for ref in refs_to_try:
+    if data.get_ref(ref):
+      return data.get_ref(ref)
+
+  # name is SHA1
+  is_hex= all(c in string.hexdigits for c in name)
+  if len(name) == 40 and is_hex:
+    return name
+
+  assert False, f'Unknown name {name}'
 
 def is_ignored(path):
   return '.mu-git' in path.split('/')
